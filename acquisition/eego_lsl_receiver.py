@@ -6,7 +6,9 @@ samples in a ring buffer that processing / ML / dashboard code can read from.
 
 Command line:
     python acquisition/eego_lsl_receiver.py --list
-    python acquisition/eego_lsl_receiver.py [--name NAME] [--save rec.csv] [--duration 60]
+    python acquisition/eego_lsl_receiver.py [--name NAME] [--duration 60] [--no-save]
+
+Recordings are saved by default to data/<YYYY-MM-DD_HH-MM-SS>.csv in the repo root.
 
 Library:
     from acquisition.eego_lsl_receiver import EegoReceiver
@@ -22,6 +24,8 @@ import csv
 import sys
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from pylsl import (
@@ -32,6 +36,9 @@ from pylsl import (
     resolve_byprop,
     resolve_streams,
 )
+
+# Recordings are written here (repo_root/data), regardless of the working directory.
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 # Channels eego may append after the electrodes. They are not EEG and should be
 # excluded from filtering / ML (see EegoReceiver.eeg_picks).
@@ -210,7 +217,8 @@ def main() -> int:
     p.add_argument("--type", default="EEG", help="LSL stream type to look for (default: EEG)")
     p.add_argument("--timeout", type=float, default=10.0, help="seconds to wait for the stream")
     p.add_argument("--duration", type=float, help="stop after this many seconds (default: until Ctrl+C)")
-    p.add_argument("--save", metavar="CSV", help="write every sample to this CSV file")
+    p.add_argument("--no-save", action="store_true", help="do not record the data to disk")
+    p.add_argument("--data-dir", type=Path, default=DATA_DIR, help=f"where recordings go (default: {DATA_DIR})")
     args = p.parse_args()
 
     if args.list:
@@ -235,10 +243,14 @@ def main() -> int:
 
     writer = None
     f = None
-    if args.save:
-        f = open(args.save, "w", newline="")
+    out_path = None
+    if not args.no_save:
+        args.data_dir.mkdir(parents=True, exist_ok=True)
+        out_path = args.data_dir / f"{datetime.now():%Y-%m-%d_%H-%M-%S}.csv"
+        f = open(out_path, "w", newline="")
         writer = csv.writer(f)
         writer.writerow(["lsl_timestamp", *rx.ch_names])
+        print(f"Recording to {out_path}")
 
     picks = rx.eeg_picks
     start = last_report = time.monotonic()
@@ -266,7 +278,7 @@ def main() -> int:
     finally:
         if f is not None:
             f.close()
-            print(f"Saved {rx.n_received} samples to {args.save}")
+            print(f"Saved {rx.n_received} samples to {out_path}")
         rx.close()
     return 0
 

@@ -42,8 +42,8 @@ native `liblsl` library, so nothing else needs installing.
 ```bash
 conda activate neuro_env
 python acquisition/eego_lsl_receiver.py --list           # show available LSL streams
-python acquisition/eego_lsl_receiver.py                  # connect to the first EEG stream
-python acquisition/eego_lsl_receiver.py --save rec.csv   # also record to CSV
+python acquisition/eego_lsl_receiver.py                  # connect + record to data/<date_time>.csv
+python acquisition/eego_lsl_receiver.py --no-save        # just watch, do not record
 ```
 
 Run `python acquisition/eego_lsl_receiver.py --help` for all options. LSL discovers
@@ -72,3 +72,23 @@ rx.update()                          # pull everything that has arrived
 data, times = rx.latest(seconds=2)   # (n_channels, n_samples), LSL timestamps
 print(rx.ch_names, rx.sfreq)
 ```
+
+## Loading recorded sessions (eego export)
+
+Sessions are exported from eego as `<name>.cnt` (EEG + events), `<name>.seg` (recording
+segments) and `<name>.evt` (event log, redundant with the `.cnt`). Put each session in its
+own folder under `data/` (git-ignored; share recordings separately).
+
+```python
+from processing import load_session
+
+session = load_session("data/Session 1_ Handwriting")   # folder or .cnt path
+seg1, seg2 = session.segments    # one mne Raw per segment, in volts, unfiltered
+```
+
+eego pauses the recording during an impedance check, so one `.cnt` can hold several
+segments joined end to end. `load_session` splits them using the `.seg` file; filter each
+segment separately so the jump between them doesn't distort the signal.
+
+Example analysis: `notebooks/session1_frontal_segments.ipynb` plots the frontal channels
+(raw, alpha 8–13 Hz, gamma 30–100 Hz) for both segments side by side.
