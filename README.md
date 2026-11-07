@@ -50,5 +50,5 @@ eego pauses the recording during an impedance check, so one `.cnt` can hold seve
 segments joined end to end. `load_session` splits them using the `.seg` file; filter each
 segment separately so the jump between them doesn't distort the signal.
 
-Example analysis: `notebooks/session1_frontal_segments.ipynb` plots the frontal channels
+Example analysis: `notebooks/session1_segments.ipynb` plots all channels
 (raw, alpha 8–13 Hz, gamma 30–100 Hz) for both segments side by side.
