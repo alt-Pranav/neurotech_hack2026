@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+# Local recordings
+recordings/
+*.csv
+*.xdf

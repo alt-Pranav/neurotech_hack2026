@@ -1,0 +1,22 @@
+# Shared environment for the team.
+# Create:  conda env create -f environment.yml
+# Update:  conda env update -f environment.yml --prune
+name: neuro_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  # Data processing / EEG
+  - numpy
+  - scipy
+  - pandas
+  - mne
+  # ML
+  - scikit-learn
+  # Plotting / notebooks
+  - matplotlib
+  - ipykernel
+  # LSL streaming: pylsl is pip-only; its wheel bundles the native liblsl
+  - pip:
+      - pylsl
