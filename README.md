@@ -50,5 +50,17 @@ eego pauses the recording during an impedance check, so one `.cnt` can hold seve
 segments joined end to end. `load_session` splits them using the `.seg` file; filter each
 segment separately so the jump between them doesn't distort the signal.
 
-Example analysis: `notebooks/session1_segments.ipynb` plots all channels
-(raw, alpha 8–13 Hz, gamma 30–100 Hz) for both segments side by side.
+## Analysis code
+
+- `processing/analysis.py`: band plots, Welch spectra with per-channel window rejection,
+  relative power (share of 4–40 Hz), and FOOOF (theta/alpha measured above the 1/f background).
+- `processing/cleaning.py`: `prepare` (1–100 Hz, notch, average reference), `ica_clean`
+  (ICA + ICLabel removes eye/muscle components), `asr_clean` (Artifact Subspace Reconstruction
+  for movement bursts).
+
+Notebooks:
+- `notebooks/session1_segments.ipynb`: writing with the dominant vs non-dominant hand.
+- `notebooks/session2_segments.ipynb`: writing, juggling and throwing pairs.
+
+Both compare segments for signs of mental workload (frontal theta up, parietal alpha down).
+p-values in them are descriptive only: windows from one recording aren't independent samples.
