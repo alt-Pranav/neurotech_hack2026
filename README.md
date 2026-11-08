@@ -61,6 +61,11 @@ segment separately so the jump between them doesn't distort the signal.
 Notebooks:
 - `notebooks/session1_segments.ipynb`: writing with the dominant vs non-dominant hand.
 - `notebooks/session2_segments.ipynb`: writing, juggling and throwing pairs.
+- `notebooks/session3_pt1_segments.ipynb`: 8 handwriting trials alternating left/right hands.
+- `notebooks/session3_pt2_segments.ipynb`: finger-tapping sequence learning, early vs late.
+
+Session 3 used a different cap layout (adds Cz, M1/M2, Oz; no T9/T10/P9/P10) and its Fz
+electrode was saturated throughout, so frontal theta there is measured at F3+F4.
 
 Both compare segments for signs of mental workload (frontal theta up, parietal alpha down).
 p-values in them are descriptive only: windows from one recording aren't independent samples.

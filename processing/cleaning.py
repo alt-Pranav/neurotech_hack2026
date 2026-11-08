@@ -24,10 +24,10 @@ ARTIFACT_LABELS = ("eye blink", "muscle artifact", "heart beat", "line noise", "
 
 
 def prepare(seg, bad_channels=(), line_freq=60.0):
-    """Copy of `seg` ready for ICA/ICLabel: bad channels dropped, standard 10-05 positions,
+    """Copy of `seg` ready for ICA/ICLabel: bad channels dropped, 10-05 positions (colin27_1005),
     1–100 Hz band-pass, line-noise notch (and harmonics below 100 Hz), average reference."""
     out = seg.copy().drop_channels([c for c in bad_channels if c in seg.ch_names])
-    out.set_montage("standard_1005", on_missing="raise", verbose="error")
+    out.set_montage("colin27_1005", on_missing="raise", verbose="error")
     out.filter(l_freq=1.0, h_freq=100.0, verbose="error")
     out.notch_filter(np.arange(line_freq, 100.0, line_freq), verbose="error")
     out.set_eeg_reference("average", projection=False, verbose="error")

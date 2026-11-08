@@ -32,8 +32,12 @@ def band_filter(seg, l_freq, h_freq, notch=None):
     return out.filter(l_freq=l_freq, h_freq=h_freq, verbose="error")
 
 
-def plot_segments(segs, labels, title, channels=None, sharey_rows=True):
-    """Grid of channels (rows) x segments (columns), every sample plotted, in µV."""
+def plot_segments(segs, labels, title, channels=None, sharey_rows=True, marks=None):
+    """Grid of channels (rows) x segments (columns), every sample plotted, in µV.
+
+    marks: optional list (one per column) of [(time_s, label), ...] drawn as vertical lines,
+    or [(start_s, end_s, label), ...] drawn as shaded spans.
+    """
     channels = channels or segs[0].ch_names
     n_rows, n_cols = len(channels), len(segs)
     fig, axes = plt.subplots(
@@ -48,7 +52,15 @@ def plot_segments(segs, labels, title, channels=None, sharey_rows=True):
             ax.set_ylabel(f"{ch}\n(µV)", rotation=0, ha="right", va="center")
             ax.margins(x=0)
             ax.grid(alpha=0.3)
-        axes[0, col].set_title(f"{label}  ({seg.times[-1]:.1f} s)")
+            for m in (marks[col] if marks else []):
+                if len(m) == 3:
+                    ax.axvspan(m[0], m[1], color="C3", alpha=0.15, lw=0)
+                else:
+                    ax.axvline(m[0], color="C3", lw=0.8, ls="--")
+        for m in (marks[col] if marks else []):
+            axes[0, col].text(m[0], 1.02, m[-1], transform=axes[0, col].get_xaxis_transform(),
+                              fontsize=7, color="C3", ha="left", va="bottom")
+        axes[0, col].set_title(f"{label}  ({seg.times[-1]:.1f} s)", pad=14 if marks else 6)
         axes[-1, col].set_xlabel("Time from segment start (s)")
     fig.suptitle(title, fontsize=14)
     fig.tight_layout(rect=(0, 0, 1, 0.985))
@@ -346,13 +358,16 @@ def plot_periodic_bars(spectra, labels, title, min_keep=0.5):
                         index=channels).round(2)
 
 
-def periodic_workload_comparison(spectra_nonoverlap, labels, title, min_windows=20):
-    """Per-window theta at Fz and alpha at Pz above each segment's 1/f fit (dB), two segments.
+def periodic_workload_comparison(spectra_nonoverlap, labels, title, min_windows=20,
+                                 theta_ch="Fz", alpha_ch="Pz"):
+    """Per-window frontal theta and parietal alpha above each segment's 1/f fit (dB), two segments.
 
-    Medians and their difference are the result; the Mann–Whitney p-value is descriptive only
-    (windows from one recording are not independent samples).
+    theta_ch / alpha_ch: channel names present in the spectra (use `roi_spectrum` to add an
+    averaged region such as "F3+F4"). Medians and their difference are the result; the
+    Mann–Whitney p-value is descriptive only (windows from one recording are not independent).
     """
-    measures = {"Theta above 1/f at Fz (dB)": ("Fz", "theta"), "Alpha above 1/f at Pz (dB)": ("Pz", "alpha")}
+    measures = {f"Theta above 1/f at {theta_ch} (dB)": (theta_ch, "theta"),
+                f"Alpha above 1/f at {alpha_ch} (dB)": (alpha_ch, "alpha")}
     data = {}
     for name, (ch, band) in measures.items():
         vals = []
@@ -360,9 +375,9 @@ def periodic_workload_comparison(spectra_nonoverlap, labels, title, min_windows=
             fm = fit_fooof(sp, [ch]).get(ch)
             vals.append(window_periodic_db(sp, fm, ch, BANDS[band]) if fm else np.array([]))
         data[name] = vals
-    n = [len(v) for v in data["Theta above 1/f at Fz (dB)"]]
+    n = [len(v) for v in data[f"Theta above 1/f at {theta_ch} (dB)"]]
     if min(n) < min_windows:
-        print(f"Not enough clean Fz windows: {labels[0]} n={n[0]}, {labels[1]} n={n[1]} (need ≥{min_windows}). Skipped.")
+        print(f"Not enough clean {theta_ch} windows: {labels[0]} n={n[0]}, {labels[1]} n={n[1]} (need ≥{min_windows}). Skipped.")
         return None
     rows = []
     fig, axes = plt.subplots(1, len(measures), figsize=(13, 5))
@@ -385,3 +400,29 @@ def periodic_workload_comparison(spectra_nonoverlap, labels, title, min_windows=
     fig.tight_layout()
     plt.show()
     return pd.DataFrame(rows).set_index("measure")
+
+
+def roi_spectrum(spectrum, channels, name=None):
+    """Add a region-of-interest pseudo-channel: the PSD averaged over `channels` per window.
+
+    A window counts as clean for the region only if it is clean on every channel in it.
+    Returns a new spectrum tuple with the extra channel appended (named e.g. "F3+F4").
+    """
+    psd, freqs, chs, keep = spectrum
+    name = name or "+".join(channels)
+    idx = [chs.index(c) for c in channels]
+    roi = psd[:, idx].mean(axis=1, keepdims=True)          # NaN if any channel was rejected
+    roi_keep = np.mean(np.all(np.isfinite(psd[:, idx, 0]), axis=1))
+    return np.concatenate([psd, roi], axis=1), freqs, chs + [name], np.append(keep, roi_keep)
+
+
+def periodic_metrics(spectrum, theta_ch="Fz", alpha_ch="Pz"):
+    """Theta above 1/f at `theta_ch`, alpha above 1/f at `alpha_ch` (dB, from the averaged
+    spectrum) and the 1/f exponent at both. NaN where a channel has no clean windows."""
+    out = {}
+    models = fit_fooof(spectrum, [theta_ch, alpha_ch])
+    for key, ch, band in [("theta_db", theta_ch, "theta"), ("alpha_db", alpha_ch, "alpha")]:
+        fm = models.get(ch)
+        out[key] = periodic_power_db(fm, BANDS[band]) if fm else np.nan
+        out[f"exponent_{ch}"] = fm.get_params("aperiodic_params", "exponent") if fm else np.nan
+    return out
