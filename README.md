@@ -1,7 +1,8 @@
-# neurotech_hack2026
+# NeuroDex
 
-EEG from an ANT Neuro eego amplifier (EE-2xx), recorded in the eego software and exported
-as .cnt files, with data processing, ML, and a visualization dashboard.
+**NeuroDex** (repository: `neurotech_hack2026`): EEG from an ANT Neuro eego amplifier (EE-2xx),
+recorded in the eego software and exported as .cnt files, with data processing, ML, and a
+visualization dashboard.
 
 ## Setup
 
