@@ -367,28 +367,31 @@ def open_inlet(args):
             sys.exit(f"--labels has {len(labels)} names but the stream has {n} channels")
     if not all(labels):
         sys.exit("The stream has no channel labels. Pass them with --labels Fp1,Fp2,... in stream order.")
-    ref_mask = np.array([(not NON_EEG.search(l)) and (t == "" or t.upper() == "EEG") for l, t in zip(labels, types)])
+    # eego labels its EEG channels type "Referential", so exclude known non-EEG channels
+    # by label/type instead of requiring type "EEG".
+    ref_mask = np.array([not (NON_EEG.search(l) or NON_EEG.search(t)) for l, t in zip(labels, types)])
+    if ref_mask.sum() < 2:
+        sys.exit(f"Fewer than 2 EEG channels found for the average reference. Labels: {labels}, types: {types}")
     print(f"Connected: '{info.name()}'  {n} ch @ {fs:g} Hz  units={set(u for u in units if u) or 'unknown'}")
     print(f"Average reference uses {int(ref_mask.sum())} channels; excluded: "
           f"{[l for l, m in zip(labels, ref_mask) if not m] or 'none'}")
     return inlet, fs, labels, units, ref_mask
 
 
-def unit_factor(args, units, first_chunk):
-    """Return multiplier that converts the stream values to microvolts."""
+def unit_factor(args, units, first_chunk, ref_mask):
+    """Return multiplier that converts the stream values to microvolts.
+
+    In auto mode the signal size decides, not the unit label: eego labels its channels
+    "Volt" but streams microvolts. EEG varies by ~1e-5 V, i.e. ~10 uV.
+    """
     if args.units != "auto":
         return {"uV": 1.0, "mV": 1e3, "V": 1e6}[args.units]
-    u = " ".join(units).lower()
-    if "micro" in u or "uv" in u or "µv" in u:
-        return 1.0
-    if "milli" in u or "mv" in u:
-        return 1e3
-    if re.search(r"\bv\b|volt", u):
-        return 1e6
-    med = np.median(np.abs(first_chunk))
-    f = 1e6 if med < 1.0 else 1.0
-    print(f"Units not given by the stream; median |value| = {med:.3g} -> assuming {'volts' if f == 1e6 else 'microvolts'}"
-          " (override with --units)")
+    x = np.asarray(first_chunk, float)[:, ref_mask]
+    spread = np.median(x.std(axis=0)) if len(x) > 1 else np.median(np.abs(x))
+    f = 1e6 if spread < 0.01 else 1.0
+    labelled = ", ".join(sorted({u for u, m in zip(units, ref_mask) if m and u})) or "none"
+    print(f"Units: median channel SD = {spread:.3g} (stream label: {labelled}) -> treating values as "
+          f"{'volts' if f == 1e6 else 'microvolts'} (override with --units)")
     return f
 
 
@@ -506,7 +509,15 @@ def pull_and_process(inlet, proc, logger, factor_holder):
         return []
     x = np.asarray(data, float)
     if factor_holder[0] is None:
-        factor_holder[0] = unit_factor(factor_holder[1], factor_holder[2], x)
+        # hold the first 0.5 s so the unit guess sees enough samples, then process it all
+        held = factor_holder[3]
+        held.append((x, ts))
+        if sum(len(h[0]) for h in held) < proc.fs / 2:
+            return []
+        x = np.vstack([h[0] for h in held])
+        ts = [t for h in held for t in h[1]]
+        held.clear()
+        factor_holder[0] = unit_factor(factor_holder[1], factor_holder[2], x, proc.ref_mask)
     recs = proc.push(x * factor_holder[0], ts)
     if recs:
         logger.add(recs, proc.n_total)
@@ -561,7 +572,7 @@ def main():
     stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     csv_path = os.path.join(args.log_dir, f"theta_{stamp}.csv")
     logger = Logger(csv_path, proc.targets, int(round((args.spike_pad_s + args.step_s) * fs)))
-    factor_holder = [None, args, units]
+    factor_holder = [None, args, units, []]   # factor, args, unit labels, chunks held before the unit guess
     print(f"Logging to {csv_path}")
     print("Baseline: first %.0f s - sit still." % args.baseline_s)
     try:
