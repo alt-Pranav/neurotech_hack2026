@@ -426,3 +426,50 @@ def periodic_metrics(spectrum, theta_ch="Fz", alpha_ch="Pz"):
         out[key] = periodic_power_db(fm, BANDS[band]) if fm else np.nan
         out[f"exponent_{ch}"] = fm.get_params("aperiodic_params", "exponent") if fm else np.nan
     return out
+
+
+# ------------------------------------------------------------- theta, three ways
+THETA_DEFINITIONS_MD = """**Theta power** at a channel is the total power between 4 and 8 Hz: the power spectral density
+P(f) (Welch: 2 s Hann windows, 50% overlap, averaged over the clean windows) integrated over
+4–8 Hz, in µV², reported as 10·log₁₀(θ / 1 µV²) dB. For a region such as F3+F4 the PSD is averaged
+over its channels first. It is compared with the two derived measures used elsewhere:
+**relative theta** (θ ÷ 4–40 Hz power) and **theta above 1/f** (the 4–8 Hz peak above the fitted
+background). If all three move together, the change is in theta itself; if they disagree, part of
+the change is in the rest of the spectrum."""
+
+
+def theta_definitions(spectrum, ch):
+    """Theta at `ch` (a channel or a `roi_spectrum` region) under three definitions:
+    absolute power (dB µV²), relative power (share of TOTAL), and power above the 1/f fit (dB)."""
+    psd, freqs, chs, _ = spectrum
+    k = chs.index(ch)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        mean_psd = np.nanmean(psd[:, k], axis=0)
+    m = (freqs >= BANDS["theta"][0]) & (freqs < BANDS["theta"][1])
+    absolute = mean_psd[m].sum() * (freqs[1] - freqs[0])
+    fm = fit_fooof(spectrum, [ch]).get(ch)
+    return {"absolute (dB µV²)": 10 * np.log10(absolute),
+            "relative (share of 4–40 Hz)": relative_power(spectrum, BANDS["theta"])[k],
+            "above 1/f (dB)": periodic_power_db(fm, BANDS["theta"]) if fm else np.nan}
+
+
+def plot_theta_definitions(spectra, labels, ch, title, colors=None):
+    """Bar chart of theta at `ch` under the three definitions, one bar per spectrum.
+    Returns the values as a DataFrame (rows = labels)."""
+    table = pd.DataFrame([theta_definitions(s, ch) for s in spectra], index=labels)
+    colors = colors or ["C0", "C3"] * (len(labels) // 2 + 1)
+    fig, axes = plt.subplots(1, 3, figsize=(max(12, 1.6 * len(labels) * 3), 4.3))
+    for ax, col in zip(axes, table.columns):
+        vals = table[col].values
+        ax.bar(range(len(labels)), vals, color=colors[: len(labels)])
+        lo, hi = np.nanmin(vals), np.nanmax(vals)
+        pad = 0.25 * (hi - lo) if hi > lo else 0.5
+        ax.set_ylim(lo - pad, hi + pad)
+        ax.set_xticks(range(len(labels)), labels, rotation=20 if len(labels) > 2 else 0, ha="right" if len(labels) > 2 else "center")
+        ax.set_title(f"Theta at {ch}: {col}")
+        ax.grid(axis="y", alpha=0.3)
+    fig.suptitle(title, fontsize=13)
+    fig.tight_layout()
+    plt.show()
+    return table
