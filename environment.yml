@@ -17,6 +17,7 @@ dependencies:
   # Plotting / notebooks
   - matplotlib
   - ipykernel
+  - jupyter
   # LSL streaming: pylsl is pip-only; its wheel bundles the native liblsl
   - pip:
       - pylsl
