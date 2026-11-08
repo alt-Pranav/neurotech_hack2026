@@ -64,6 +64,8 @@ Notebooks:
 - `notebooks/session3_pt1_segments.ipynb`: 8 handwriting trials alternating left/right hands.
 - `notebooks/session3_pt2_segments.ipynb`: finger-tapping rounds (13 practice + 4 new-pattern rounds,
   with a still baseline); round schedule aligned to the recording from the data.
+- `notebooks/session4_segments.ipynb`: the same finger-tapping task as Session 3 Part 2 (no timing notes;
+  the round schedule is located from the data); Fz works here.
 
 Session 3 used a different cap layout (adds Cz, M1/M2, Oz; no T9/T10/P9/P10) and its Fz
 electrode was saturated throughout, so frontal theta there is measured at F3+F4.
