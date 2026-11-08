@@ -1,74 +1,82 @@
-# neurotech_hack2026
+# Real-time theta feedback
 
-Real-time EEG from an ANT Neuro eego amplifier (EE-2xx) over Lab Streaming Layer (LSL),
-with data processing, ML, and a visualization dashboard.
+A live frontal-theta "mastery" score computed from an eego LSL stream. It is part of
+[neurotech_hack2026](../README.md); see the main README for environment setup
+(`neuro_env`) and for getting eego streaming over LSL.
 
-## Setup
+| File | What it does |
+|---|---|
+| `theta_feedback.py` | Reads an LSL EEG stream, computes F3/F4/Fz theta (4–8 Hz) and shows a live 0–100 score |
+| `lsl_replay_cnt.py` | Replays a recorded eego `.cnt` file over LSL in real time, for testing without the amplifier |
 
-Requires [Miniconda](https://docs.anaconda.com/miniconda/) (or Anaconda).
-
-```bash
-git clone git@github.com:alt-Pranav/neurotech_hack2026.git
-cd neurotech_hack2026
-conda env create -f environment.yml
-conda activate neuro_env
-```
-
-Check that LSL works:
-
-```bash
-python -c "import pylsl; print('liblsl', pylsl.library_version())"
-```
-
-### Adding / updating packages
-
-1. Add the package to `environment.yml` (conda-forge packages under `dependencies`,
-   pip-only packages under the `pip:` list) and commit it.
-2. Everyone else pulls and runs:
-
-```bash
-conda env update -f environment.yml --prune
-```
-
-Note: `pylsl` is not on conda-forge, so it is installed via pip. Its wheel bundles the
-native `liblsl` library, so nothing else needs installing.
-
-## Receiving EEG from eego
-
-1. Connect the EE-2xx amplifier and open the eego software.
-2. Enable LSL streaming in eego and start the stream (impedance check / recording view).
-3. On a machine on the **same local network** (or the same machine):
+Run both from this folder (the folder name has a space, so quote it):
 
 ```bash
 conda activate neuro_env
-python acquisition/eego_lsl_receiver.py --list           # show available LSL streams
-python acquisition/eego_lsl_receiver.py                  # connect to the first EEG stream
-python acquisition/eego_lsl_receiver.py --save rec.csv   # also record to CSV
+cd "real-time theta"
 ```
 
-Run `python acquisition/eego_lsl_receiver.py --help` for all options. LSL discovers
-streams by multicast/broadcast on the local network; some networks (e.g. campus Wi-Fi)
-block this, so a wired connection or a phone hotspot is the safest setup.
+## Live session
 
-### No headset? Use the simulator
+1. Start eego streaming over LSL (see the main README).
+2. Run `python theta_feedback.py`. It uses the first stream of type `EEG`; pass
+   `--name "<stream name>"` to pick a specific one.
+3. **Baseline:** the subject sits still for the first 15 s.
+4. **Task calibration:** press **SPACE** as the task starts. The first 15 s of the task
+   set the "no mastery" level.
+5. The score then updates every 0.25 s. 100 means theta at or below baseline, and
+   0 means theta at or above the no-mastery level.
 
-`acquisition/simulate_eego.py` publishes a fake eego-like stream (32 EEG channels in
-volts with a 10 Hz alpha rhythm, plus a TRIGGER channel) so you can develop without the amp:
+Keys (the plot window must have focus):
+
+| Key | Action |
+|---|---|
+| SPACE | Task has started; begin the 15 s task calibration |
+| R | Redo the task calibration, starting now |
+| B | Redo the baseline, starting now (also clears the task calibration) |
+| Q / Esc | Quit and save the logs |
+
+## How the score is computed
+
+The settings match the offline analysis in `analysis/`.
+
+1. Causal 1–40 Hz band-pass plus a 60 Hz notch, applied chunk by chunk.
+2. Every 0.25 s the most recent 2 s window is processed:
+   - flat or dead channels are dropped,
+   - the data are average-referenced over the working EEG channels,
+   - theta power is computed for each target channel (Hann-tapered FFT) and averaged across them.
+3. A window is rejected if any target channel exceeds 150 µV peak to peak. Theta spikes
+   (for example from typing mistakes) above median + 2 robust SDs are also rejected,
+   along with windows within 1 s of a spike.
+4. The live value is the median of the clean windows from the last 15 s:
+   `score = 100 × (no_mastery − value) / (no_mastery − baseline)`, clipped to 0–100.
+
+Every threshold is a command-line option (for example `--ptp-uv`, `--channels`,
+`--calib-s`). `python theta_feedback.py --help` lists them all with their defaults.
+
+## Testing without the headset
+
+Replay a recording in one terminal and run the feedback in another:
 
 ```bash
-python acquisition/simulate_eego.py        # terminal 1
-python acquisition/eego_lsl_receiver.py    # terminal 2
+python lsl_replay_cnt.py path/to/recording.cnt --start 22.6   # terminal 1
+python theta_feedback.py --name CNT-replay                    # terminal 2
 ```
 
-### Using the receiver in code
+`--start` skips ahead in the recording and `--speed` changes the playback rate.
+Reading `.cnt` files needs `mne` and `antio`.
 
-To use the receiver from your own code (processing, ML, dashboard):
+To run headless (no plot) with an automatic task start:
 
-```python
-from acquisition.eego_lsl_receiver import EegoReceiver
-
-rx = EegoReceiver.connect()          # resolves the eego EEG stream
-rx.update()                          # pull everything that has arrived
-data, times = rx.latest(seconds=2)   # (n_channels, n_samples), LSL timestamps
-print(rx.ch_names, rx.sfreq)
+```bash
+python theta_feedback.py --no-plot --task-start-after 30 --duration 300
 ```
+
+## Output
+
+Each session writes two files to `theta_logs/` (change this with `--log-dir`):
+
+- `theta_<timestamp>.csv`: one row per 2 s window, with per-channel theta, the
+  rejection flags, the 15 s median and the score.
+- `theta_<timestamp>_session.json`: the settings, calibration values, events and the
+  stream info.
