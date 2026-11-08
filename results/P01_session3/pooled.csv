@@ -1,0 +1,11 @@
+signal,rounds,change_pct,p_value,tap_windows,rest_windows
+mu C3,practice,14.0,0.219,91,52
+mu C3,new,106.7,0.0,24,12
+mu C4,practice,0.3,0.986,91,52
+mu C4,new,37.2,0.08,24,12
+beta C3,practice,10.3,0.208,91,52
+beta C3,new,2.4,0.855,24,12
+beta C4,practice,16.3,0.006,91,52
+beta C4,new,9.2,0.5,24,12
+theta Fz,practice,-10.2,0.388,91,52
+theta Fz,new,14.6,0.73,24,12

@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finger Tapping Task</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: lab bench. Setup on the left, saved sessions + results on the right; a full-screen run view takes over during a session */
+  --bg:#eef0ec;
+  --surface:#ffffff;
+  --ink:#18212b;
+  --muted:#5b6672;
+  --line:#d6dbd3;
+  --accent:#1d5ea8;
+  --accent-ink:#ffffff;
+  --control:#c45f17;
+  --good:#2c7a4b;
+  --bad:#b03636;
+  --soft:#f6f7f4;
+  --font-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12161b; --surface:#1a2027; --ink:#e6eaee; --muted:#9aa5b1; --line:#2c343d;
+    --accent:#5c9be0; --accent-ink:#0b1622; --control:#e8873f; --good:#56b07c; --bad:#e06a6a; --soft:#151a20;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12161b; --surface:#1a2027; --ink:#e6eaee; --muted:#9aa5b1; --line:#2c343d;
+  --accent:#5c9be0; --accent-ink:#0b1622; --control:#e8873f; --good:#56b07c; --bad:#e06a6a; --soft:#151a20;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5}
+h1,h2,h3{text-wrap:balance;margin:0;font-weight:600}
+h1{font-size:1.45rem;letter-spacing:-0.01em}
+h2{font-size:1.02rem}
+h3{font-size:.9rem;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.06em}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 20px 48px;display:grid;gap:20px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+header.top p{margin:4px 0 0;color:var(--muted);max-width:68ch}
+.grid{display:grid;grid-template-columns:minmax(320px,430px) 1fr;gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.fields .full{grid-column:1/-1}
+label{display:grid;gap:4px;font-size:.82rem;color:var(--muted);font-weight:500}
+input[type=text],input[type=number],textarea{font:inherit;color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+input.mono{font-family:var(--font-mono);letter-spacing:.08em}
+textarea{resize:vertical;min-height:54px}
+input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.keys label{text-align:center}
+.keys input{text-align:center;font-family:var(--font-mono);text-transform:uppercase;font-size:1rem}
+.check{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--ink);font-weight:400}
+.check input{width:16px;height:16px;accent-color:var(--accent)}
+button{font:inherit;cursor:pointer;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600;padding:11px 16px;font-size:1rem;width:100%}
+button.primary:disabled{opacity:.5;cursor:not-allowed}
+button.small{padding:4px 9px;font-size:.82rem}
+button.danger{color:var(--bad)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.pill.ok{color:var(--good)} .pill.warn{color:var(--control)} .pill.err{color:var(--bad)} .pill.neutral{color:var(--muted)}
+.muted{color:var(--muted)}
+.small-text{font-size:.82rem}
+.err-text{color:var(--bad);font-size:.82rem;min-height:1em}
+.timeline{display:flex;height:26px;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+.timeline span{display:block;height:100%}
+.tl-rest{background:var(--soft)}
+.tl-train{background:var(--accent)}
+.tl-control{background:var(--control)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.78rem;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;border:1px solid var(--line)}
+.note{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:.84rem;color:var(--muted)}
+.note b{color:var(--ink);font-weight:600}
+.sessions{display:grid;gap:6px;max-height:280px;overflow-y:auto}
+.sess{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--soft);cursor:pointer;text-align:left;width:100%}
+.sess.active{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.sess .meta{font-size:.78rem;color:var(--muted);font-family:var(--font-mono)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.tile{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--soft)}
+.tile .v{font-family:var(--font-mono);font-size:1.45rem;font-weight:600;font-variant-numeric:tabular-nums}
+.tile .k{font-size:.78rem;color:var(--muted)}
+.tile .d{font-size:.78rem;color:var(--muted);margin-top:2px}
+.chart svg{width:100%;height:auto;display:block}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{color:var(--muted);font-weight:500;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em}
+td:first-child,th:first-child,td:nth-child(2),th:nth-child(2){text-align:left}
+td.mono{font-family:var(--font-mono)}
+tr.ctrl td{color:var(--control)}
+.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:8px}
+.confirm{display:flex;gap:8px;align-items:center;font-size:.82rem}
+
+/* ---------- Run view: fixed dark field so screen luminance stays constant for EEG ---------- */
+#run{position:fixed;inset:0;background:#16191d;color:#e9ecef;display:none;z-index:50;font-family:var(--font-body);color-scheme:dark}
+#run.on{display:grid;grid-template-rows:auto 1fr auto}
+#run .bar{display:flex;justify-content:space-between;padding:14px 22px;font-family:var(--font-mono);font-size:.9rem;color:#8d98a4}
+#run .center{display:grid;place-items:center;text-align:center;align-content:center;gap:26px;padding:20px}
+#run .state{font-size:1rem;letter-spacing:.3em;text-transform:uppercase;font-weight:600}
+#run .state.tap{color:#7fb6f0}
+#run .state.ctrl{color:#f0a060}
+#run .state.rest{color:#8d98a4}
+#run .seq{font-family:var(--font-mono);font-size:clamp(3rem,11vw,7rem);font-weight:600;letter-spacing:.25em;line-height:1}
+#run .seq.dim{opacity:.18}
+#run .fingers{font-family:var(--font-mono);font-size:.85rem;color:#8d98a4;letter-spacing:.1em}
+#run .clock{font-family:var(--font-mono);font-size:2.4rem;font-variant-numeric:tabular-nums;color:#c8ced4}
+#run .dots{height:14px;font-family:var(--font-mono);color:#7fb6f0;letter-spacing:.15em;font-size:1rem;max-width:90vw;overflow:hidden;white-space:nowrap}
+#run .cross{font-size:3rem;color:#c8ced4;line-height:1}
+#run .msg{color:#f0a060;font-size:1rem;min-height:1.5em}
+#run .foot{display:flex;justify-content:space-between;align-items:flex-end;padding:14px 22px;color:#6f7a86;font-size:.82rem}
+#diode{width:64px;height:64px;background:#000;border:1px solid #333}
+#diode.on{background:#fff}
+#diode.hidden{visibility:hidden}
+#focuswarn{display:none;position:absolute;top:56px;left:50%;transform:translateX(-50%);background:#b03636;color:#fff;padding:8px 14px;border-radius:6px;font-size:.9rem;cursor:pointer}
+#focuswarn.on{display:block}
+.steps{margin:0;padding-left:20px;display:grid;gap:6px}
+.handbox{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:6px;justify-items:center}
+.kb,.seqcaps{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.cap{display:grid;place-items:center;min-width:52px;height:52px;padding:0 6px;border:1px solid var(--line);border-bottom-width:4px;border-radius:9px;background:var(--surface);font-family:var(--font-mono);font-size:1.35rem;font-weight:600;color:var(--ink)}
+.capwrap{display:grid;justify-items:center;gap:3px}
+.capwrap small{font-size:.72rem;color:var(--muted)}
+.seqcaps .cap{min-width:40px;height:40px;font-size:1.1rem;border-bottom-width:3px}
+details.settings{border-top:1px solid var(--line);padding-top:10px}
+details summary{cursor:pointer;color:var(--muted);font-weight:500}
+#run .seqcaps .cap{background:#22272d;border-color:#3a424b;color:#7d8792;min-width:64px;height:64px;font-size:1.8rem}
+#run .seqcaps .cap.done{color:#5fc28a;border-color:#2f6b49;background:#1b2a22}
+#run .seqcaps .cap.next{color:#0e1620;background:#7fb6f0;border-color:#7fb6f0;transform:translateY(-3px)}
+#run .seqcaps.ctrl .cap.next{background:#f0a060;border-color:#f0a060}
+#run .seqcaps.dim .cap{opacity:.35}
+#run .kb .cap{background:#22272d;border-color:#3a424b;color:#c8ced4;min-width:84px;height:84px;font-size:2.1rem;transition:background .08s}
+#run .kb .capwrap small{color:#8d98a4;font-size:.8rem}
+#run .kb .cap.next{box-shadow:0 0 0 3px #7fb6f0;color:#fff}
+#run .kb.ctrl .cap.next{box-shadow:0 0 0 3px #f0a060}
+#run .kb .cap.hit-ok{background:#2f8a57;color:#fff}
+#run .kb .cap.hit-bad{background:#b83a3a;color:#fff}
+#run .fb{min-height:1.6em;font-size:1.15rem;font-weight:600}
+#run .fb.ok{color:#5fc28a} #run .fb.bad{color:#ef7b7b}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Finger Tapping Task</h1>
+      <p>Type a short key pattern with your left hand, rest, repeat. You get faster as you learn it.</p>
+    </div>
+    <span id="storePill" class="pill neutral">Connecting storage…</span>
+  </header>
+
+  <div class="grid">
+    <!-- SETUP -->
+    <section class="card" aria-labelledby="setupH">
+      <h2 id="setupH">How it works</h2>
+      <ol class="steps">
+        <li>Rest your <b>left hand</b> on the keys shown below. Each finger stays on its own key.</li>
+        <li>When the screen says <b>TAP</b>, type the pattern over and over, fast but accurate. The <b>glowing key</b> is always the one to hit next.</li>
+        <li>When it says <b>REST</b>, stop and keep still until the next round.</li>
+      </ol>
+      <div class="handbox">
+        <div class="small-text muted">Finger placement</div>
+        <div id="prevKb" class="kb"></div>
+        <div class="small-text muted" style="margin-top:6px">Pattern to type</div>
+        <div id="prevSeq" class="seqcaps"></div>
+      </div>
+      <div id="totalDur" class="small-text muted"></div>
+      <label for="f-label">Session name (optional)
+        <input type="text" id="f-label" placeholder="e.g. day 1 morning">
+      </label>
+      <div id="cfgErr" class="err-text" role="alert"></div>
+      <button id="startBtn" class="primary">Start</button>
+      <p class="small-text muted" style="margin:0">Using EEG? Start the recording before you press Start. Press Esc twice to stop early.</p>
+
+      <details class="settings">
+        <summary>Settings</summary>
+        <div style="display:grid;gap:14px;padding-top:12px">
+          <label for="f-notes">Notes (EEG file name, anything unusual)
+            <textarea id="f-notes" placeholder="OpenBCI_2026-11-07_18-30.txt"></textarea>
+          </label>
+          <div class="fields">
+            <label for="f-train">Practice pattern (finger numbers)<input type="text" id="f-train" class="mono" maxlength="12"></label>
+            <label for="f-control">New pattern at the end<input type="text" id="f-control" class="mono" maxlength="12"></label>
+          </div>
+          <div>
+            <div class="small-text muted" style="margin-bottom:6px">Key for each finger</div>
+            <div class="keys">
+              <label for="k4">pinky<input type="text" id="k4" maxlength="1"></label>
+              <label for="k3">ring<input type="text" id="k3" maxlength="1"></label>
+              <label for="k2">middle<input type="text" id="k2" maxlength="1"></label>
+              <label for="k1">index<input type="text" id="k1" maxlength="1"></label>
+            </div>
+          </div>
+          <div class="fields">
+            <label for="f-tap">Tap round (s)<input type="number" id="f-tap" min="5" max="120"></label>
+            <label for="f-rest">Rest (s)<input type="number" id="f-rest" min="5" max="120"></label>
+            <label for="f-ntrain">Practice rounds<input type="number" id="f-ntrain" min="1" max="40"></label>
+            <label for="f-nctrl">New-pattern rounds<input type="number" id="f-nctrl" min="0" max="10"></label>
+            <label class="full" for="f-base">Still baseline before round 1 (s)<input type="number" id="f-base" min="0" max="300"></label>
+          </div>
+          <div style="display:grid;gap:6px">
+            <label class="check" for="f-fb"><input type="checkbox" id="f-fb"> Live feedback (glowing next key, green/red flash)</label>
+            <label class="check" for="f-beep"><input type="checkbox" id="f-beep"> Beep when a tap round starts and ends</label>
+            <label class="check" for="f-diode"><input type="checkbox" id="f-diode"> Photodiode square, bottom left</label>
+            <label class="check" for="f-fs"><input type="checkbox" id="f-fs"> Full screen during the session</label>
+          </div>
+          <div id="timeline" class="timeline" aria-label="Protocol timeline"></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- SESSIONS + RESULTS -->
+    <section style="display:grid;gap:20px">
+      <div class="card" aria-labelledby="sessH">
+        <div class="row" style="justify-content:space-between"><h2 id="sessH">Saved sessions</h2><span id="sessCount" class="small-text muted"></span></div>
+        <div id="sessions" class="sessions"></div>
+      </div>
+      <div class="card" id="results" aria-labelledby="resH">
+        <div class="row" style="justify-content:space-between">
+          <h2 id="resH">Results</h2>
+          <span id="resMeta" class="small-text muted"></span>
+        </div>
+        <div id="resBody"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- RUN VIEW -->
+<div id="run" role="application" aria-label="Tapping session">
+  <div class="bar"><span id="r-block">Baseline</span><span id="r-total"></span></div>
+  <div class="center">
+    <div id="r-state" class="state rest">Rest</div>
+    <div id="r-seq" class="seqcaps big"></div>
+    <div id="r-kb" class="kb big"></div>
+    <div id="r-fb" class="fb" role="status"></div>
+    <div id="r-clock" class="clock">0:30</div>
+    <div id="r-msg" class="msg" role="status"></div>
+  </div>
+  <div class="foot"><div id="diode"></div><span>Esc twice to stop</span></div>
+  <div id="focuswarn">The task lost keyboard focus. Click here to continue.</div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const DEFAULTS = {label:"", notes:"", trainSeq:"1423123", controlSeq:"3432134", keys:["f","d","s","a"],
+  tapSec:15, restSec:10, baselineSec:30, trainBlocks:13, controlBlocks:4, beep:true, diode:true, fullscreen:true, feedback:true};
+const FINGER = {1:"index",2:"middle",3:"ring",4:"pinky"};
+const capHTML = (txt, cls, sub) => sub!=null ? `<div class="capwrap"><div class="cap ${cls||""}">${txt}</div><small>${sub}</small></div>` : `<div class="cap ${cls||""}">${txt}</div>`;
+const kbHTML = (keys, nextDigit) => [4,3,2,1].map(d => capHTML(esc(keys[d-1].toUpperCase()), d===nextDigit?"next":"", FINGER[d]).replace('class="cap ', `data-d="${d}" class="cap `)).join("");
+const seqHTML = (seq, keys, pos) => [...seq].map((ch,i) => capHTML(esc(keys[Number(ch)-1].toUpperCase()), pos==null?"":(i<pos?"done":i===pos?"next":""))).join("");
+const LS_CFG = "fts.cfg.v4", LS_SESS = "fts.sessions.v1";
+
+function lsGet(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+const epochOf = ts => Math.round((performance.timeOrigin + ts) * 1000) / 1000;
+const r1 = x => Math.round(x*10)/10;
+const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : null;
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtClock = s => { s = Math.max(0, Math.ceil(s)); return Math.floor(s/60) + ":" + String(s%60).padStart(2,"0"); };
+
+/* ---------------- config form ---------------- */
+let cfg = Object.assign({}, DEFAULTS, lsGet(LS_CFG, {}));
+cfg.label = ""; cfg.notes = "";
+const F = {label:"#f-label", notes:"#f-notes", trainSeq:"#f-train", controlSeq:"#f-control", tapSec:"#f-tap", restSec:"#f-rest",
+  trainBlocks:"#f-ntrain", controlBlocks:"#f-nctrl", baselineSec:"#f-base"};
+function fillForm(){
+  for (const k in F) $(F[k]).value = cfg[k];
+  cfg.keys.forEach((k,i)=> $("#k"+(i+1)).value = k.toUpperCase());
+  $("#f-beep").checked = cfg.beep; $("#f-diode").checked = cfg.diode; $("#f-fs").checked = cfg.fullscreen; $("#f-fb").checked = cfg.feedback;
+}
+function readForm(){
+  const c = {};
+  for (const k in F){ const el = $(F[k]); c[k] = el.type === "number" ? Number(el.value) : el.value.trim(); }
+  c.keys = [1,2,3,4].map(i => $("#k"+i).value.trim().toLowerCase());
+  c.beep = $("#f-beep").checked; c.diode = $("#f-diode").checked; c.fullscreen = $("#f-fs").checked; c.feedback = $("#f-fb").checked;
+  return c;
+}
+function validate(c){
+  const seqOk = s => /^[1-4]{3,12}$/.test(s);
+  if (!seqOk(c.trainSeq)) return "Training sequence must be 3 to 12 digits, each 1 to 4.";
+  if (c.controlBlocks > 0 && !seqOk(c.controlSeq)) return "Control sequence must be 3 to 12 digits, each 1 to 4.";
+  if (c.controlBlocks > 0 && c.controlSeq === c.trainSeq) return "The control sequence has to differ from the training sequence.";
+  if (c.keys.some(k => k.length !== 1)) return "Set one key for each finger.";
+  if (new Set(c.keys).size !== 4) return "Each finger needs a different key.";
+  if (!(c.tapSec >= 5 && c.restSec >= 5)) return "Tap and rest periods need to be at least 5 s.";
+  if (!(c.trainBlocks >= 1)) return "Run at least 1 training block.";
+  if (!(c.controlBlocks >= 0) || !(c.baselineSec >= 0)) return "Block counts and baseline cannot be negative.";
+  return "";
+}
+function buildSchedule(c){
+  const segs = [];
+  if (c.baselineSec > 0) segs.push({type:"rest", dur:c.baselineSec, kind:"baseline"});
+  let n = 0;
+  for (let i=0;i<c.trainBlocks;i++){ n++; segs.push({type:"tap", dur:c.tapSec, block:n, phase:"train", seq:c.trainSeq});
+    segs.push({type:"rest", dur:c.restSec, kind:"rest", nextNew: i===c.trainBlocks-1 && c.controlBlocks>0}); }
+  for (let i=0;i<c.controlBlocks;i++){ n++; segs.push({type:"tap", dur:c.tapSec, block:n, phase:"control", seq:c.controlSeq});
+    segs.push({type:"rest", dur:c.restSec, kind:"rest"}); }
+  return segs;
+}
+function renderTimeline(){
+  const c = readForm(); const err = validate(c);
+  $("#cfgErr").textContent = err;
+  $("#startBtn").disabled = !!err;
+  if (err) return;
+  const segs = buildSchedule(c); const total = segs.reduce((s,x)=>s+x.dur,0);
+  $("#timeline").innerHTML = segs.map(s => `<span class="${s.type==="rest"?"tl-rest":(s.phase==="control"?"tl-control":"tl-train")}" style="width:${(s.dur/total*100).toFixed(3)}%" title="${s.type==="rest"?"Rest":("Block "+s.block)} ${s.dur}s"></span>`).join("");
+  const mins = Math.round(total/60);
+  $("#totalDur").textContent = `About ${mins} min: ${c.trainBlocks} practice rounds${c.controlBlocks?`, then ${c.controlBlocks} rounds of a new pattern`:""}. Each round is ${c.tapSec} s of tapping and ${c.restSec} s of rest.`;
+  $("#prevKb").innerHTML = kbHTML(c.keys, 0);
+  $("#prevSeq").innerHTML = seqHTML(c.trainSeq, c.keys, null);
+  const save = Object.assign({}, c); delete save.label; delete save.notes; lsSet(LS_CFG, save);
+}
+fillForm(); renderTimeline();
+document.querySelectorAll(".card input, .card textarea").forEach(el => el.addEventListener("input", renderTimeline));
+
+/* ---------------- storage ---------------- */
+const store = { db:null, mode:"pending", sessions:[], localSessions: lsGet(LS_SESS, []), q:Promise.resolve(), lastErr:"" };
+function setPill(){
+  const p = $("#storePill");
+  if (store.mode === "db") { p.className = "pill ok"; p.textContent = "Saving to this artifact"; }
+  else if (store.mode === "local") { p.className = "pill warn"; p.textContent = "Saving in this browser only"; p.title = "The artifact database is not available in this view, so sessions are kept in this browser. Export after each session."; }
+  else if (store.mode === "error") { p.className = "pill err"; p.textContent = "Save failed: " + store.lastErr; }
+  else { p.className = "pill neutral"; p.textContent = "Connecting storage…"; }
+}
+function enqueue(fn){
+  store.q = store.q.then(async () => {
+    try { await fn(); }
+    catch(e){
+      if (e && e.code === "unavailable"){ await new Promise(r=>setTimeout(r, 400+Math.random()*600)); try { await fn(); return; } catch(e2){ e = e2; } }
+      store.mode = "error"; store.lastErr = (e && (e.code || e.message)) || "unknown"; setPill();
+    }
+  });
+  return store.q;
+}
+function metaOf(S){ const m = Object.assign({}, S); delete m.taps; return m; }
+function saveMeta(S){
+  if (store.db) return enqueue(() => store.db.doc("sessions/"+S.id).set(metaOf(S)));
+  persistLocal(S);
+}
+function saveTaps(S, blockNo){
+  if (!store.db) return persistLocal(S);
+  const rows = S.taps[blockNo] || [];
+  return enqueue(() => store.db.doc(`sessions/${S.id}/taps/b${String(blockNo).padStart(3,"0")}`).set({block:blockNo, cols:["key","t_in_block_ms","epoch_ms","correct"], rows}));
+}
+function persistLocal(S){
+  const i = store.localSessions.findIndex(x => x.id === S.id);
+  const copy = JSON.parse(JSON.stringify(S));
+  if (i >= 0) store.localSessions[i] = copy; else store.localSessions.unshift(copy);
+  if (!lsSet(LS_SESS, store.localSessions)) { store.lastErr = "browser storage full, export now"; store.mode = "error"; setPill(); }
+  if (store.mode !== "db") { store.sessions = store.localSessions.map(metaOf); renderSessions(); }
+}
+async function getTaps(S){
+  if (S.taps) return S.taps;
+  const local = store.localSessions.find(x => x.id === S.id);
+  if (local && local.taps) return local.taps;
+  if (!store.db) return {};
+  const snap = await store.db.collection(`sessions/${S.id}/taps`).get();
+  const out = {}; snap.docs.forEach(d => { const v = d.data(); out[v.block] = v.rows; });
+  return out;
+}
+async function deleteSession(S){
+  if (store.db){
+    try{
+      const snap = await store.db.collection(`sessions/${S.id}/taps`).get();
+      for (const d of snap.docs) await store.db.doc(`sessions/${S.id}/taps/${d.id}`).delete();
+      await store.db.doc("sessions/"+S.id).delete();
+    }catch(e){ store.mode="error"; store.lastErr = e.code || "delete failed"; setPill(); }
+  }
+  store.localSessions = store.localSessions.filter(x => x.id !== S.id); lsSet(LS_SESS, store.localSessions);
+  if (!store.db){ store.sessions = store.localSessions.map(metaOf); renderSessions(); }
+  if (view.id === S.id){ view.id = null; renderResults(); }
+}
+let downloads = null;
+async function initStore(){
+  let db = null;
+  try { if (window.claude && typeof window.claude.use === "function") { db = await window.claude.use("db"); downloads = await window.claude.use("downloads"); } } catch(e){ db = null; }
+  if (!db){ store.mode = "local"; store.sessions = store.localSessions.map(metaOf); setPill(); renderSessions(); renderResults(); return; }
+  store.db = db; store.mode = "db"; setPill();
+  const loadTimer = setTimeout(() => { if (!loaded) $("#sessions").innerHTML = `<div class="empty">Saved sessions can't be reached yet. New sessions will still save when the connection comes back.</div>`; }, 10000);
+  let loaded = false;
+  db.collection("sessions").orderBy("createdAt","desc").limit(200).onSnapshot(snap => {
+    if (!snap.metadata.fromCache){ loaded = true; clearTimeout(loadTimer); }
+    store.sessions = snap.docs.map(d => d.data());
+    renderSessions();
+    if (!view.id && store.sessions.length && !run.active){ view.id = store.sessions[0].id; }
+    renderResults();
+  }, err => { clearTimeout(loadTimer); store.mode = "error"; store.lastErr = err.code || "load failed"; setPill(); });
+}
+
+/* ---------------- sessions list ---------------- */
+const view = { id:null, confirmDel:null };
+function statusPill(s){ return s === "complete" ? `<span class="pill ok">complete</span>` : s === "aborted" ? `<span class="pill warn">stopped early</span>` : `<span class="pill neutral">${esc(s)}</span>`; }
+function renderSessions(){
+  const list = $("#sessions"); const ss = store.sessions;
+  $("#sessCount").textContent = ss.length ? `${ss.length} saved` : "";
+  if (!ss.length){ list.innerHTML = `<div class="empty">No sessions yet.</div>`; return; }
+  list.innerHTML = ss.map(s => {
+    const d = new Date(s.createdAt);
+    return `<button class="sess ${view.id===s.id?"active":""}" data-id="${esc(s.id)}">
+      <span><span style="font-weight:600">${esc(s.label || "Untitled session")}</span><br><span class="meta">${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})} · ${(s.blocks||[]).length} rounds</span></span>
+      ${statusPill(s.status)}</button>`; }).join("");
+  list.querySelectorAll(".sess").forEach(b => b.addEventListener("click", () => { view.id = b.dataset.id; view.confirmDel = null; renderSessions(); renderResults(); }));
+}
+
+/* ---------------- analysis ---------------- */
+function analyze(S){
+  const B = S.blocks || [];
+  const tr = B.filter(b => b.phase === "train"), ct = B.filter(b => b.phase === "control");
+  const first = tr.slice(0,2), last = tr.slice(-2);
+  const m = (arr,k) => mean(arr.map(b => b[k]).filter(v => v != null));
+  const out = { early: m(first,"correctSeqs"), late: m(last,"correctSeqs"), ctrl: ct.length ? m(ct,"correctSeqs") : null,
+    earlyErr: m(first,"errorRate"), lateErr: m(last,"errorRate"), ctrlErr: ct.length ? m(ct,"errorRate") : null };
+  out.gainPct = (out.early && tr.length >= 4) ? (out.late - out.early) / out.early * 100 : null;
+  out.fallback = (out.ctrl != null && tr.length >= 4 && out.late !== out.early) ? (out.late - out.ctrl) / (out.late - out.early) * 100 : null;
+  return out;
+}
+function chartSVG(B, key, title, fmt){
+  const W = 640, H = 210, L = 44, R = 14, T = 26, Bm = 30;
+  if (!B.length) return "";
+  const vals = B.map(b => b[key] ?? 0);
+  let max = Math.max(...vals, 0);
+  const step = niceStep(max/4 || 1); max = Math.max(step*4, Math.ceil(max/step)*step);
+  const n = B.length, x = i => L + (n===1 ? (W-L-R)/2 : i*(W-L-R)/(n-1)), y = v => T + (H-T-Bm) * (1 - v/max);
+  let g = "";
+  for (let v=0; v<=max+1e-9; v+=step){ g += `<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="var(--font-mono)">${fmt(v)}</text>`; }
+  const ci = B.findIndex(b => b.phase === "control");
+  if (ci >= 0){ const x0 = ci===0 ? L : (x(ci-1)+x(ci))/2; g += `<rect x="${x0}" y="${T}" width="${W-R-x0}" height="${H-T-Bm}" fill="var(--control)" opacity="0.08"/><text x="${W-R-4}" y="${T+12}" text-anchor="end" font-size="11" fill="var(--control)">new pattern</text>`; }
+  const pts = ph => B.map((b,i)=>({b,i})).filter(o => o.b.phase === ph);
+  const line = (arr, col) => arr.length > 1 ? `<polyline fill="none" stroke="${col}" stroke-width="2" points="${arr.map(o => x(o.i)+","+y(o.b[key]??0)).join(" ")}"/>` : "";
+  const dots = (arr, col) => arr.map(o => `<circle cx="${x(o.i)}" cy="${y(o.b[key]??0)}" r="4" fill="${col}"><title>Block ${o.b.block}: ${fmt(o.b[key]??0)}</title></circle>`).join("");
+  const trP = pts("train"), ctP = pts("control");
+  const xl = B.map((b,i) => `<text x="${x(i)}" y="${H-10}" text-anchor="middle" font-size="11" fill="var(--muted)" font-family="var(--font-mono)">${b.block}</text>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}"><text x="${L}" y="14" font-size="12" font-weight="600" fill="var(--ink)">${esc(title)}</text>${g}${line(trP,"var(--accent)")}${line(ctP,"var(--control)")}${dots(trP,"var(--accent)")}${dots(ctP,"var(--control)")}${xl}</svg>`;
+}
+function niceStep(raw){ const p = Math.pow(10, Math.floor(Math.log10(raw))); const f = raw/p; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p; }
+
+function renderResults(){
+  const body = $("#resBody");
+  const S = (run.active && run.S && view.id === run.S.id) ? run.S : store.sessions.find(s => s.id === view.id);
+  if (!S){ $("#resMeta").textContent = ""; body.innerHTML = `<div class="empty">Your results show up here after your first session.</div>`; return; }
+  const B = S.blocks || [];
+  $("#resMeta").textContent = new Date(S.createdAt).toLocaleString() + (S.label ? " · " + S.label : "");
+  const a = analyze(S);
+  const f1 = v => v == null ? "–" : r1(v).toString();
+  const pct = v => v == null ? "–" : (v>0?"+":"") + Math.round(v) + "%";
+  let verdict = "Need at least 4 practice rounds and the new-pattern rounds to judge.";
+  if (a.fallback != null){
+    verdict = a.fallback >= 60 ? "The new pattern dropped back toward where you started, so the improvement was mostly from learning this specific pattern."
+      : a.fallback >= 25 ? "The new pattern dropped back partway. Some of the gain was pattern-specific, some was general speed-up."
+      : "The new pattern barely dropped, so most of the gain looks like general warm-up, not pattern learning.";
+  }
+  const tiles = `<div class="tiles">
+    <div class="tile"><div class="k">Improvement</div><div class="v">${pct(a.gainPct)}</div><div class="d">full patterns per round: ${f1(a.early)} at the start, ${f1(a.late)} at the end of practice</div></div>
+    <div class="tile"><div class="k">New-pattern check</div><div class="v">${f1(a.ctrl)}</div><div class="d">${verdict}</div></div>
+  </div>`;
+  const rows = B.map(b => `<tr class="${b.phase==="control"?"ctrl":""}"><td class="mono">${b.block}</td><td class="mono">${esc(b.seq)}</td><td>${b.phase==="control"?"new":"practice"}</td><td>${b.correctSeqs}</td><td>${b.presses}</td><td>${b.errorPresses}</td><td>${Math.round(b.errorRate*100)}%</td><td>${b.meanSeqMs==null?"–":Math.round(b.meanSeqMs)}</td><td>${b.meanItiMs==null?"–":Math.round(b.meanItiMs)}</td></tr>`).join("");
+  const partial = S.status === "running" ? `<div class="note">This session is ${run.active && run.S && run.S.id===S.id ? "in progress" : "unfinished (the page closed mid-run)"}. Finished blocks are saved.</div>` : "";
+  const delUI = view.confirmDel === S.id
+    ? `<span class="confirm">Delete this session and its keypress data? <button class="small danger" id="delYes">Delete</button><button class="small" id="delNo">Keep</button></span>`
+    : `<button class="small danger" id="delBtn">Delete session</button>`;
+  body.innerHTML = B.length ? `${partial}${tiles}
+    <div class="chart">${chartSVG(B,"correctSeqs","Full patterns typed correctly, per round", v => String(Math.round(v)))}</div>
+    <details><summary>Details and export</summary>
+    <div style="display:grid;gap:14px;padding-top:12px">
+    <div class="chart">${chartSVG(B,"errorRate","Wrong-key rate per round", v => Math.round(v*100)+"%")}</div>
+    <div class="tablewrap"><table><thead><tr><th>Round</th><th>Pattern</th><th>Type</th><th>Full patterns</th><th>Presses</th><th>Wrong keys</th><th>Wrong %</th><th>Pattern ms</th><th>Tap gap ms</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${S.notes ? `<div class="note"><b>Notes:</b> ${esc(S.notes)}</div>` : ""}
+    <div class="small-text muted">Exports include every keypress with a Unix ms timestamp, for lining up with EEG.</div>
+    <div class="row" id="exportRow"></div>
+    <div id="exportMsg" class="small-text muted" role="status"></div>
+    <div class="row" style="justify-content:flex-end">${delUI}</div></div></details>`
+    : `${partial}<div class="empty">No finished blocks yet.</div><div class="row" style="justify-content:flex-end">${delUI}</div>`;
+  const er = $("#exportRow");
+  if (er){
+    const items = [["Keypresses CSV","taps","csv"],["Blocks CSV","blocks","csv"],["Events CSV","events","csv"],["Everything JSON","all","json"]];
+    er.innerHTML = items.map(([lbl,kind]) => `${downloads ? `<button class="small" data-dl="${kind}">${lbl}</button>` : ""}<button class="small" data-cp="${kind}">Copy ${lbl.replace(/ (CSV|JSON)/,"")}</button>`).join("");
+    er.querySelectorAll("[data-dl]").forEach(b => b.addEventListener("click", () => doExport(S, b.dataset.dl, false)));
+    er.querySelectorAll("[data-cp]").forEach(b => b.addEventListener("click", () => doExport(S, b.dataset.cp, true)));
+  }
+  const d = $("#delBtn"); if (d) d.addEventListener("click", () => { view.confirmDel = S.id; renderResults(); });
+  const y = $("#delYes"); if (y) y.addEventListener("click", () => { view.confirmDel = null; deleteSession(S); });
+  const n = $("#delNo"); if (n) n.addEventListener("click", () => { view.confirmDel = null; renderResults(); });
+}
+
+/* ---------------- export ---------------- */
+function csv(rows){ return rows.map(r => r.map(v => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v; }).join(",")).join("\n") + "\n"; }
+async function buildExport(S, kind){
+  const B = S.blocks || [];
+  if (kind === "blocks") return csv([["session_id","block","phase","sequence","start_epoch_ms","end_epoch_ms","presses","correct_sequences","error_presses","error_rate","mean_sequence_ms","mean_iti_ms","sd_iti_ms","partial"],
+    ...B.map(b => [S.id,b.block,b.phase,b.seq,b.startEpoch,b.endEpoch,b.presses,b.correctSeqs,b.errorPresses,r1(b.errorRate*1000)/1000,b.meanSeqMs==null?"":r1(b.meanSeqMs),b.meanItiMs==null?"":r1(b.meanItiMs),b.sdItiMs==null?"":r1(b.sdItiMs),b.partial?1:0])]);
+  if (kind === "events") return csv([["session_id","epoch_ms","t_session_ms","event","block","detail"], ...(S.events||[]).map(e => [S.id,e.e,e.t,e.ev,e.block ?? "",e.detail ?? ""])]);
+  const taps = await getTaps(S);
+  if (kind === "taps"){
+    const rows = [["session_id","block","phase","sequence","key","t_in_block_ms","epoch_ms","correct"]];
+    B.forEach(b => (taps[b.block] || []).forEach(r => rows.push([S.id,b.block,b.phase,b.seq,r[0],r[1],r[2],r[3]])));
+    return csv(rows);
+  }
+  return JSON.stringify(Object.assign(metaOf(S), {taps}), null, 1);
+}
+async function doExport(S, kind, copy){
+  const msg = $("#exportMsg");
+  try{
+    const data = await buildExport(S, kind);
+    const base = (S.label ? S.label.replace(/[^\w-]+/g,"_") + "_" : "") + S.id;
+    if (copy){ await navigator.clipboard.writeText(data); msg.textContent = "Copied. Paste into a .csv or .json file."; return; }
+    await downloads.save({filename:`${base}_${kind}.${kind==="all"?"json":"csv"}`, data});
+    msg.textContent = "Saved.";
+  }catch(e){
+    msg.textContent = e && e.code === "declined" ? "Download cancelled." : copy ? "Copy was blocked here. Try the download button." : "Download didn't work in this view. Use Copy instead.";
+  }
+}
+
+/* ---------------- run engine ---------------- */
+const run = { active:false };
+let audio = null;
+function beep(freq){
+  if (!run.cfg.beep || !audio) return;
+  try{ const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = freq; o.type = "sine";
+    g.gain.setValueAtTime(0.0001, audio.currentTime); g.gain.exponentialRampToValueAtTime(0.25, audio.currentTime+0.01); g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime+0.15);
+    o.connect(g).connect(audio.destination); o.start(); o.stop(audio.currentTime+0.17); }catch(e){}
+}
+function logEvent(ev, block, detail, ts){
+  ts = ts ?? performance.now();
+  run.S.events.push({e: epochOf(ts), t: Math.round((ts - run.t0)*1000)/1000, ev, block: block ?? null, detail: detail ?? null});
+}
+function newId(){ const d = new Date(), p = n => String(n).padStart(2,"0");
+  return `S${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}-${Math.random().toString(36).slice(2,6)}`; }
+
+$("#startBtn").addEventListener("click", async () => {
+  const c = readForm(); const err = validate(c); if (err){ $("#cfgErr").textContent = err; return; }
+  try{ audio = audio || new (window.AudioContext || window.webkitAudioContext)(); await audio.resume(); }catch(e){ audio = null; }
+  run.cfg = c; run.segs = buildSchedule(c); run.active = true; run.t0 = performance.now(); run.escAt = 0;
+  run.totalDur = run.segs.reduce((s,x)=>s+x.dur,0);
+  run.S = { id:newId(), createdAt:new Date().toISOString(), startEpoch: epochOf(run.t0), label:c.label, notes:c.notes, status:"running",
+    config:{trainSeq:c.trainSeq, controlSeq:c.controlSeq, keys:c.keys, tapSec:c.tapSec, restSec:c.restSec, baselineSec:c.baselineSec, trainBlocks:c.trainBlocks, controlBlocks:c.controlBlocks, hand:"left"},
+    userAgent:navigator.userAgent, blocks:[], events:[], taps:{} };
+  view.id = run.S.id;
+  $("#diode").classList.toggle("hidden", !c.diode);
+  $("#run").classList.add("on");
+  if (c.fullscreen){ try{ await $("#run").requestFullscreen(); }catch(e){} }
+  $("#run").focus?.();
+  logEvent("session_start", null, "trainSeq=" + c.trainSeq + ";controlSeq=" + c.controlSeq, run.t0);
+  saveMeta(run.S);
+  runSegment(0);
+  requestAnimationFrame(tick);
+});
+
+function runSegment(i){
+  if (!run.active) return;
+  if (i >= run.segs.length) return finish("complete");
+  const seg = run.segs[i]; run.i = i; run.seg = seg; run.segStart = performance.now(); run.segEnd = run.segStart + seg.dur*1000;
+  if (seg.type === "tap"){
+    run.block = { block:seg.block, phase:seg.phase, seq:seg.seq, start:run.segStart, pos:0, seqStart:null, taps:[], seqDurs:[], correctSeqs:0, errors:0 };
+    logEvent("block_start", seg.block, seg.phase + ":" + seg.seq, run.segStart);
+    beep(880);
+  } else {
+    run.block = null;
+    logEvent(seg.kind === "baseline" ? "baseline_start" : "rest_start", null, null, run.segStart);
+  }
+  $("#diode").classList.toggle("on", seg.type === "tap");
+  renderRunStatic();
+  clearTimeout(run.timer);
+  run.timer = setTimeout(endSegment, seg.dur*1000);
+}
+function endSegment(){
+  if (!run.active) return;
+  if (run.seg.type === "tap"){ closeBlock(false); beep(440); }
+  runSegment(run.i + 1);
+}
+function closeBlock(partial){
+  const b = run.block; if (!b) return;
+  const endTs = performance.now();
+  logEvent("block_end", b.block, partial ? "partial" : null, endTs);
+  const t = b.taps.map(r => r[1]);
+  const itis = []; for (let k=1;k<t.length;k++) itis.push(t[k]-t[k-1]);
+  const mi = mean(itis);
+  const sd = itis.length > 1 ? Math.sqrt(itis.reduce((s,x)=>s+(x-mi)**2,0)/(itis.length-1)) : null;
+  const sum = { block:b.block, phase:b.phase, seq:b.seq, startEpoch:epochOf(b.start), endEpoch:epochOf(endTs), presses:b.taps.length,
+    correctSeqs:b.correctSeqs, errorPresses:b.errors, errorRate: b.taps.length ? b.errors/b.taps.length : 0,
+    meanSeqMs: mean(b.seqDurs), meanItiMs: mi, sdItiMs: sd, partial: !!partial };
+  run.S.blocks.push(sum); run.S.taps[b.block] = b.taps;
+  run.block = null;
+  saveTaps(run.S, sum.block); saveMeta(run.S);
+  renderResults();
+}
+function finish(status){
+  clearTimeout(run.timer);
+  run.S.status = status; run.S.endedAt = new Date().toISOString();
+  logEvent("session_end", null, status);
+  saveMeta(run.S);
+  run.active = false;
+  $("#run").classList.remove("on"); $("#diode").classList.remove("on");
+  if (document.fullscreenElement){ try{ document.exitFullscreen(); }catch(e){} }
+  view.id = run.S.id; renderSessions(); renderResults();
+  $("#results").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function renderRunStatic(){
+  const seg = run.seg, c = run.cfg;
+  const totalRounds = c.trainBlocks + c.controlBlocks;
+  const st = $("#r-state");
+  $("#r-fb").textContent = ""; $("#r-fb").className = "fb";
+  $("#r-msg").textContent = "";
+  if (seg.type === "tap"){
+    const ctrl = seg.phase === "control";
+    $("#r-block").textContent = `Round ${seg.block} of ${totalRounds}` + (ctrl ? " · new pattern" : "");
+    st.textContent = "Tap"; st.className = "state " + (ctrl ? "ctrl" : "tap");
+    $("#r-seq").className = "seqcaps big" + (ctrl ? " ctrl" : "");
+    $("#r-kb").className = "kb big" + (ctrl ? " ctrl" : "");
+    updateCues();
+  } else {
+    const next = run.segs[run.i+1];
+    $("#r-block").textContent = seg.kind === "baseline" ? "Before round 1" : (next ? `Rest · round ${next.block} next` : "Last rest");
+    st.textContent = seg.kind === "baseline" ? "Keep still" : "Rest"; st.className = "state rest";
+    $("#r-seq").className = "seqcaps big dim";
+    $("#r-seq").innerHTML = next ? seqHTML(next.seq, c.keys, null) : "";
+    $("#r-kb").className = "kb big";
+    $("#r-kb").innerHTML = kbHTML(c.keys, 0);
+    if (seg.kind === "baseline") $("#r-msg").textContent = "Hands on the keys, eyes on the screen. Tapping starts when the timer hits 0.";
+    if (seg.nextNew) $("#r-msg").textContent = "Heads up: the next rounds use a NEW pattern (shown above).";
+  }
+}
+function updateCues(){
+  const b = run.block, c = run.cfg; if (!b) return;
+  const show = c.feedback;
+  $("#r-seq").innerHTML = seqHTML(b.seq, c.keys, show ? b.pos : null);
+  $("#r-kb").innerHTML = kbHTML(c.keys, show ? Number(b.seq[b.pos]) : 0);
+}
+function flash(d, ok){
+  const el = $(`#r-kb .cap[data-d="${d}"]`); if (!el) return;
+  el.classList.add(ok ? "hit-ok" : "hit-bad");
+  setTimeout(() => el.classList.remove("hit-ok","hit-bad"), 160);
+}
+function tick(){
+  if (!run.active) return;
+  const now = performance.now();
+  $("#r-clock").textContent = fmtClock((run.segEnd - now)/1000);
+  $("#r-total").textContent = fmtClock(run.totalDur - (now - run.t0)/1000) + " left";
+  requestAnimationFrame(tick);
+}
+
+const keyDigit = e => { const k = (e.key || "").toLowerCase(); const i = run.cfg.keys.indexOf(k); return i >= 0 ? i+1 : 0; };
+window.addEventListener("keydown", e => {
+  if (!run.active) return;
+  if (e.key === "Escape"){
+    e.preventDefault();
+    const now = performance.now();
+    if (now - run.escAt < 2500){ logEvent("abort", run.block ? run.block.block : null); if (run.block) closeBlock(true); finish("aborted"); }
+    else { run.escAt = now; $("#r-msg").textContent = "Press Esc again to stop the session."; setTimeout(() => { if (run.active && performance.now() - run.escAt >= 2400 && $("#r-msg").textContent.startsWith("Press Esc")) $("#r-msg").textContent = ""; }, 2500); }
+    return;
+  }
+  const d = keyDigit(e); if (!d) return;
+  e.preventDefault();
+  if (e.repeat) return;
+  const pn = performance.now();
+  const ts = (e.timeStamp > 0 && Math.abs(pn - e.timeStamp) < 1000) ? e.timeStamp : pn;
+  if (!run.block || ts > run.segEnd){ logEvent("press_outside_block", null, "key " + d, ts); return; }
+  const b = run.block, seq = b.seq, tIn = Math.round((ts - b.start)*1000)/1000;
+  let ok = 0;
+  if (d === Number(seq[b.pos])){
+    ok = 1; if (b.pos === 0) b.seqStart = tIn; b.pos++;
+    if (b.pos === seq.length){ b.correctSeqs++; b.seqDurs.push(tIn - b.seqStart); b.pos = 0; }
+  } else {
+    b.errors++;
+    if (d === Number(seq[0])){ b.pos = 1; b.seqStart = tIn; } else b.pos = 0;
+  }
+  b.taps.push([d, tIn, epochOf(ts), ok]);
+  if (run.cfg.feedback){
+    updateCues(); flash(d, ok);
+    const fb = $("#r-fb");
+    if (ok){ fb.className = "fb ok"; fb.textContent = `${b.correctSeqs} full pattern${b.correctSeqs===1?"":"s"} this round`; }
+    else { fb.className = "fb bad"; fb.textContent = `Wrong key. Next one is ${run.cfg.keys[Number(seq[b.pos])-1].toUpperCase()}`; }
+  }
+});
+window.addEventListener("blur", () => { if (run.active){ logEvent("focus_lost", run.block ? run.block.block : null); $("#focuswarn").classList.add("on"); } });
+window.addEventListener("focus", () => { if (run.active){ logEvent("focus_regained", run.block ? run.block.block : null); $("#focuswarn").classList.remove("on"); } });
+$("#focuswarn").addEventListener("click", () => { window.focus(); $("#focuswarn").classList.remove("on"); });
+document.addEventListener("visibilitychange", () => { if (run.active) logEvent(document.hidden ? "page_hidden" : "page_visible", run.block ? run.block.block : null); });
+
+/* ---------------- boot ---------------- */
+renderSessions(); renderResults(); setPill();
+initStore();
+})();
+</script>
+</body>
+</html>
