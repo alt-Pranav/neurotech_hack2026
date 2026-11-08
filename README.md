@@ -50,5 +50,25 @@ eego pauses the recording during an impedance check, so one `.cnt` can hold seve
 segments joined end to end. `load_session` splits them using the `.seg` file; filter each
 segment separately so the jump between them doesn't distort the signal.
 
-Example analysis: `notebooks/session1_frontal_segments.ipynb` plots the frontal channels
-(raw, alpha 8–13 Hz, gamma 30–100 Hz) for both segments side by side.
+## Analysis code
+
+- `processing/analysis.py`: band plots, Welch spectra with per-channel window rejection,
+  relative power (share of 4–40 Hz), and FOOOF (theta/alpha measured above the 1/f background).
+- `processing/cleaning.py`: `prepare` (1–100 Hz, notch, average reference), `ica_clean`
+  (ICA + ICLabel removes eye/muscle components), `asr_clean` (Artifact Subspace Reconstruction
+  for movement bursts).
+
+Notebooks:
+- `notebooks/session1_segments.ipynb`: writing with the dominant vs non-dominant hand.
+- `notebooks/session2_segments.ipynb`: writing, juggling and throwing pairs.
+- `notebooks/session3_pt1_segments.ipynb`: 8 handwriting trials alternating left/right hands.
+- `notebooks/session3_pt2_segments.ipynb`: finger-tapping rounds (13 practice + 4 new-pattern rounds,
+  with a still baseline); round schedule aligned to the recording from the data.
+- `notebooks/session4_segments.ipynb`: the same finger-tapping task as Session 3 Part 2 (no timing notes;
+  the round schedule is located from the data); Fz works here.
+
+Session 3 used a different cap layout (adds Cz, M1/M2, Oz; no T9/T10/P9/P10) and its Fz
+electrode was saturated throughout, so frontal theta there is measured at F3+F4.
+
+Both compare segments for signs of mental workload (frontal theta up, parietal alpha down).
+p-values in them are descriptive only: windows from one recording aren't independent samples.

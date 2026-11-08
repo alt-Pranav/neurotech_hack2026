@@ -101,6 +101,7 @@ def load_session(path: str | Path, verbose: str = "error") -> Session:
     """
     cnt = _find_cnt(Path(path))
     raw = mne.io.read_raw_ant(cnt, preload=True, verbose=verbose)
+    _normalize_channel_names(raw)
     n_total = raw.n_times
 
     seg_path = cnt.with_suffix(".seg")
@@ -114,10 +115,25 @@ def load_session(path: str | Path, verbose: str = "error") -> Session:
     segments = [
         raw.copy().crop(
             tmin=s.start_sample / sfreq,
-            tmax=s.stop_sample / sfreq,
+            # the last segment runs to the end of the recording (tmax=None avoids
+            # asking for one sample past the end)
+            tmax=None if s.stop_sample >= n_total else s.stop_sample / sfreq,
             include_tmax=False,
             verbose=verbose,
         )
         for s in info
     ]
     return Session(cnt.stem, raw, info, segments)
+
+
+def _normalize_channel_names(raw: mne.io.BaseRaw) -> None:
+    """Fix the capitalization of standard 10-05 labels in place (e.g. 'pz' -> 'Pz', 'o1' -> 'O1').
+
+    Some eego cap configurations export lowercase labels; analysis code looks channels up
+    by their standard names.
+    """
+    standard = {name.lower(): name for name in mne.channels.make_standard_montage("colin27_1005").ch_names}
+    mapping = {ch: standard[ch.lower()] for ch in raw.ch_names
+               if ch not in standard.values() and ch.lower() in standard}
+    if mapping:
+        raw.rename_channels(mapping)

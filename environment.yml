@@ -12,6 +12,11 @@ dependencies:
   - scipy
   - pandas
   - mne
+  # EEG cleaning and spectral parameterization
+  - mne-icalabel   # ICLabel: classifies ICA components (eye, muscle, brain, ...)
+  - onnxruntime    # backend for mne-icalabel (avoids installing PyTorch)
+  - meegkit        # Artifact Subspace Reconstruction (ASR) for movement bursts
+  - fooof          # FOOOF/specparam: separates oscillatory peaks from the 1/f background
   # ML
   - scikit-learn
   # Plotting / notebooks
