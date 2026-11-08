@@ -2,7 +2,8 @@
 
 A live frontal-theta "mastery" score computed from an eego LSL stream. It is part of
 [neurotech_hack2026](../README.md); see the main README for environment setup
-(`neuro_env`) and for getting eego streaming over LSL.
+(`neuro_env`). Unlike the rest of the repo, which works from exported `.cnt` files, this
+program reads the amplifier live over Lab Streaming Layer (LSL).
 
 | File | What it does |
 |---|---|
@@ -18,13 +19,19 @@ cd "real-time theta"
 
 ## Live session
 
-1. Start eego streaming over LSL (see the main README).
+1. In the eego software, enable LSL streaming and start the stream. The laptop running
+   this program must be on the same local network as the eego laptop. Campus Wi-Fi often
+   blocks LSL discovery, so a phone hotspot or wired connection is safest.
 2. Run `python theta_feedback.py`. It uses the first stream of type `EEG`; pass
-   `--name "<stream name>"` to pick a specific one.
-3. **Baseline:** the subject sits still for the first 15 s.
-4. **Task calibration:** press **SPACE** as the task starts. The first 15 s of the task
+   `--name "<stream name>"` to pick a specific one (eego names it like
+   `EE511-..._on_<computer>`).
+3. Check the startup lines: the average reference should use all EEG channels (only
+   `Trigger` excluded), and units should say "microvolts". eego labels its data "Volt"
+   but sends microvolts, so the program judges units from the signal size.
+4. **Baseline:** the subject sits still for the first 15 s.
+5. **Task calibration:** press **SPACE** as the task starts. The first 15 s of the task
    set the "no mastery" level.
-5. The score then updates every 0.25 s. 100 means theta at or below baseline, and
+6. The score then updates every 0.25 s. 100 means theta at or below baseline, and
    0 means theta at or above the no-mastery level.
 
 Keys (the plot window must have focus):
